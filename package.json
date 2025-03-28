@@ -1,0 +1,27 @@
+{
+  "name": "hack",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "convert": "node convert.js",
+    "start": "node revert.js",
+    "demo": "node demo.js ./demo/example-image-from-ts.png ./demo/example.ts",
+    "bogus": "node bogus.js",
+    "upload": "node upload.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "canvas": "^3.1.0",
+    "exif-js": "^2.3.0",
+    "form-data": "^4.0.2",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "pngjs": "^7.0.0",
+    "sharp": "^0.33.5",
+    "xbogus": "^1.0.2"
+  }
+}
