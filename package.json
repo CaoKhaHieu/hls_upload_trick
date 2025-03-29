@@ -3,11 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "node index.js",
+    "clean": "node clean.js",
     "convert": "node convert.js",
     "start": "node revert.js",
-    "demo": "node demo.js ./demo/example-image-from-ts.png ./demo/example.ts",
-    "bogus": "node bogus.js",
     "upload": "node upload.js"
   },
   "author": "",

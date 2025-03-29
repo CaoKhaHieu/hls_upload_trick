@@ -2,24 +2,30 @@
 - https://animehay.li/
 - https://ninoyo.com/
 
+#### PREPARATION
+- FFMPEG:
+```bash
+brew install ffmpeg
+```
+
 #### CONVERT MP4 TO HLS
 ```bash
-ffmpeg -i example_data/input.mp4 -codec: copy -start_number 1 -hls_time 10 -hls_list_size 0 \
+ffmpeg -i example_data/input.mp4 -codec: copy -start_number 1 -hls_time 4 -hls_list_size 0 \
 -hls_segment_filename "hls/segment_%d.ts" -f hls hls/playlist.m3u8
 ```
 
 #### CLEAN TS SEGMENTS
-```python
-python3 clean.py
+```javascript
+npm run clean
 ```
 
 #### CONVERT TS TO PNG
-```python
-python3 convert.py
+```javascript
+npm run convert
 ```
 
 #### UPLOAD PNG TO TIKTOK
-```python
+```javascript
 npm run upload
 ```
 
