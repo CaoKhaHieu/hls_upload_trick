@@ -20,13 +20,22 @@ const CONFIG = {
 
   TEMP_DIR: "./temp",
   OUTPUT_DIR: "./output",
-  REFERENCE_TS: "example_data/example.ts", // File mẫu để lấy header 32 byte (clean.js)
-  FIX_HEADERS: true, // Tự động sửa header 32 byte nếu tìm thấy REFERENCE_TS
+  LOG_FILE: "./process.log",
+  FIX_HEADERS: true, // Tự động sửa header 32 byte
+  // 32 byte header chuẩn để fix các segment TS lỗi
+  REFERENCE_HEADER: Buffer.from("474011100042f0250001c10000ff01ff0001fc8014481201067c43caffffffff", "hex"),
 };
 
 // ============================================
 // UTILITIES
 // ============================================
+function logToFile(message, isError = false) {
+  const timestamp = new Date().toISOString();
+  const prefix = isError ? "[ERROR]" : "[SUCCESS]";
+  const logMessage = `${timestamp} ${prefix} ${message}\n`;
+  fs.appendFileSync(CONFIG.LOG_FILE, logMessage);
+}
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
@@ -109,11 +118,11 @@ async function processInput(m3u8Input, tempDir, isTest = false) {
     tsLinks = tsLinks.slice(0, 5);
   }
 
-  // Lấy header mẫu nếu cần sửa
+  // Lấy header chuẩn nếu cần sửa
   let header32 = null;
-  if (CONFIG.FIX_HEADERS && fs.existsSync(CONFIG.REFERENCE_TS)) {
-    header32 = fs.readFileSync(CONFIG.REFERENCE_TS).slice(0, 32);
-    console.log(`🛠️  Using header from ${CONFIG.REFERENCE_TS} to fix segments.`);
+  if (CONFIG.FIX_HEADERS && CONFIG.REFERENCE_HEADER) {
+    header32 = CONFIG.REFERENCE_HEADER;
+    console.log(`🛠️  Using hardcoded standard header to fix segments.`);
   }
 
   const tsFiles = [];
@@ -209,16 +218,13 @@ async function run(m3u8Input, isTest = false) {
       try {
         const { pngSize, tsSize } = await createPngFromTs(tsPath, pngPath);
         let uploadedUrl = null;
-        // Retry logic
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        // Thử lại tối đa 2 lần (1 lần retry)
+        for (let attempt = 1; attempt <= 2; attempt++) {
           try {
             uploadedUrl = await uploadToTikTok(pngPath);
             if (uploadedUrl) break;
           } catch (e) {
-            if (e.message.includes("PERMISSION_DENIED")) {
-              throw e; // Ném ra ngoài để dừng vòng lặp lớn
-            }
-            if (attempt === 3) throw e;
+            if (attempt === 2) throw e;
             console.log(`      ⚠️  Retry ${filename} (${attempt + 1})...`);
             await sleep(2000);
           }
@@ -227,13 +233,14 @@ async function run(m3u8Input, isTest = false) {
           url: uploadedUrl,
           byteRange: `${tsSize}@${pngSize}`
         };
-        console.log(`   ✅ [${i + 1}/${tsFiles.length}] Uploaded: ${uploadedUrl}`);
+        const msg = `[${i + 1}/${tsFiles.length}] Uploaded: ${uploadedUrl}`;
+        console.log(`   ✅ ${msg}`);
+        logToFile(msg);
       } catch (e) {
-        console.error(`   ❌ [${i + 1}/${tsFiles.length}] Error: ${filename}`, e.message);
-        if (e.message.includes("PERMISSION_DENIED")) {
-          console.log("\n🚨 Dừng quá trình upload do lỗi quyền truy cập. Vui lòng cập nhật MS_TOKEN, Cookie và X-Bogus trong main.js.");
-          break; // Dừng vòng lặp for
-        }
+        const errorMsg = `[${i + 1}/${tsFiles.length}] UPLOAD FAILED: ${filename} - ${e.message}`;
+        console.error(`\n❌ ${errorMsg}`);
+        logToFile(errorMsg, true);
+        throw e; // Dừng toàn bộ script ngay lập tức
       }
       await sleep(500);
     }
@@ -264,13 +271,16 @@ async function run(m3u8Input, isTest = false) {
     }
 
     fs.writeFileSync(outputPath, finalLines.join('\n'));
+    const successMsg = `SUCCESS! New Playlist: ${outputPath}`;
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`✅ SUCCESS!`);
-    console.log(`📄 New Playlist: ${outputPath}`);
+    console.log(`✅ ${successMsg}`);
     console.log(`${'='.repeat(50)}\n`);
+    logToFile(successMsg);
 
   } catch (error) {
-    console.error(`\n🚨 FATAL ERROR: ${error.message}`);
+    const errorMsg = `FATAL ERROR: ${error.message}`;
+    console.error(`\n🚨 ${errorMsg}`);
+    logToFile(errorMsg, true);
   } finally {
     cleanupDir(tempDir);
   }
